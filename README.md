@@ -1,4 +1,4 @@
-# PROJECT_NAME skill
+# MP3DemoSkill
 
 This skill illustrates a very simple MP3 music player.  It works by loading
 MP3 files from the /mp3 subfolder using the format:  song_title.mp3
