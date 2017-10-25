@@ -29,6 +29,7 @@ from mycroft.skills.core import MycroftSkill
 from mycroft.util.log import getLogger
 from mycroft.util import play_mp3
 from random import randrange
+import threading
 
 __author__ = 'eward'
 
@@ -40,6 +41,7 @@ class MP3DemoSkill(MycroftSkill):
     def __init__(self):
         super(MP3DemoSkill, self).__init__(name="MP3DemoSkill")
         self.process = None
+        self.stop_commanded = True
 
     def initialize(self):
         self.load_data_files(dirname(__file__))
@@ -61,6 +63,15 @@ class MP3DemoSkill(MycroftSkill):
             require("PlayKeyword").require("MusicKeyword").build()
         self.register_intent(play_music_intent,
                              self.handle_play_music_intent)
+        loop_music_intent = IntentBuilder("LoopMusicIntent").\
+            require("LoopKeyword").require("MusicKeyword").build()
+        self.register_intent(loop_music_intent,
+                             self.handle_loop_music_intent)
+        skip_music_intent = IntentBuilder("SkipMusicIntent").\
+            require("SkipKeyword").require("MusicKeyword").build()
+        self.register_intent(skip_music_intent,
+                             self.handle_skip_music_intent)
+
 
     def handle_play_song_intent(self, message):
         # Play the song requested
@@ -77,7 +88,24 @@ class MP3DemoSkill(MycroftSkill):
         index = randrange(0, len(mp3s))
         self.process = play_mp3(join(dirname(__file__), "mp3", mp3s[index]))
 
+    def handle_loop_music_intent(self, message):
+        # Loop random songs
+        self.stop_commanded = False
+        def play_in_thread(self):
+            mp3s = listdir(join(dirname(__file__), "mp3"))
+            index = randrange(0, len(mp3s))
+            self.process = play_mp3(join(dirname(__file__), "mp3", mp3s[index]))
+            self.process.wait()
+            if not self.stop_commanded:
+                threading.Thread(target=play_in_thread, args=(self,)).start()
+        threading.Thread(target=play_in_thread, args=(self,)).start()
+
+    def handle_skip_music_intent(self, message):
+        if self.process and not self.stop_commanded:
+            self.process.terminate()
+
     def stop(self):
+        self.stop_commanded = True
         if self.process:  # and self.process.poll() is None:
             # No reason to say "music stopped", that is obvious!
             # self.speak_dialog('music.stop')
